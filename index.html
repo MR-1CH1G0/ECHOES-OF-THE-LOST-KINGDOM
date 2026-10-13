@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Echoes of the Lost Kingdom</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; width:100%; height:100%; overflow:hidden; background:#08111a; font-family:system-ui,-apple-system,Segoe UI,sans-serif; touch-action:none; }
+  canvas { display:block; }
+  #hud { position:fixed; inset:0; pointer-events:none; color:#fff; text-shadow:0 2px 5px #000; }
+  #brand { position:absolute; top:10px; left:12px; font-weight:900; letter-spacing:.08em; font-size:clamp(12px,3vw,18px); }
+  #chapter { position:absolute; top:38px; left:12px; font-size:12px; color:#f4d58a; }
+  #bars { position:absolute; top:62px; left:12px; width:min(190px,42vw); }
+  .barlabel { font-size:10px; margin:4px 0 2px; }
+  .bar { height:8px; background:#26313b; border:1px solid #b6c2cb; border-radius:10px; overflow:hidden; }
+  .fill { height:100%; width:100%; transition:width .15s; }
+  #healthFill { background:linear-gradient(90deg,#b51e35,#ff697a); }
+  #manaFill { background:linear-gradient(90deg,#2467cf,#70d9ff); }
+  #objective { position:absolute; top:12px; right:12px; max-width:45vw; text-align:right; font-size:12px; padding:8px 10px; background:#06101ab8; border:1px solid #b7c4d455; border-radius:10px; }
+  #message { position:absolute; left:50%; top:25%; transform:translateX(-50%); width:min(88vw,620px); text-align:center; font-size:clamp(14px,3.5vw,19px); font-weight:700; color:#fff0bd; opacity:0; transition:opacity .25s; }
+  #controls { position:fixed; inset:0; pointer-events:none; }
+  #stickZone { pointer-events:auto; position:absolute; left:15px; bottom:22px; width:136px; height:136px; border-radius:50%; background:#d8e8ff18; border:2px solid #d8e8ff55; }
+  #stick { position:absolute; width:58px; height:58px; left:37px; top:37px; border-radius:50%; background:#d9e8ff88; border:2px solid #fff9; }
+  .buttons { pointer-events:auto; position:absolute; right:14px; bottom:18px; display:grid; grid-template-columns:repeat(2,66px); gap:9px; }
+  button { color:white; font-weight:800; border:1px solid #ffffff88; background:#152b42d9; border-radius:18px; min-height:54px; padding:6px; box-shadow:0 4px 10px #0007; touch-action:manipulation; }
+  button:active { transform:scale(.96); background:#42678b; }
+  #attackBtn { background:#7d2635e8; }
+  #spellBtn { background:#285ca9e8; }
+  #jumpBtn { background:#35633be8; }
+  #interactBtn { background:#7a5725e8; }
+  #overlay { position:fixed; inset:0; z-index:5; display:flex; align-items:center; justify-content:center; padding:20px; background:linear-gradient(#07111be8,#08121af2), radial-gradient(ellipse at center,#31506a,#08111a); color:#fff; }
+  .panel { width:min(680px,100%); max-height:90vh; overflow:auto; border:1px solid #e9d49b88; border-radius:22px; padding:clamp(20px,5vw,36px); background:#0d1b29ed; box-shadow:0 18px 70px #000b; }
+  h1 { font-size:clamp(26px,7vw,48px); line-height:1.03; margin:0 0 8px; color:#f5d98c; }
+  .eyebrow { color:#8bd8f5; font-weight:800; letter-spacing:.15em; font-size:11px; }
+  #overlay p { line-height:1.55; color:#d7e2ed; }
+  #startBtn { width:100%; margin-top:12px; min-height:52px; background:#a56b2b; font-size:16px; }
+  .small { font-size:12px!important; color:#aebdca!important; }
+  @media (max-width:430px) { #objective { top:100px; max-width:52vw; } #bars { top:62px; } }
+</style>
+</head>
+<body>
+<div id="hud">
+  <div id="brand">ECHOES OF THE LOST KINGDOM</div>
+  <div id="chapter">PROLOGUE</div>
+  <div id="bars">
+    <div class="barlabel">HEALTH</div><div class="bar"><div id="healthFill" class="fill"></div></div>
+    <div class="barlabel">MANA</div><div class="bar"><div id="manaFill" class="fill"></div></div>
+  </div>
+  <div id="objective">Objective: Begin your journey</div>
+  <div id="message"></div>
+</div>
+<div id="controls">
+  <div id="stickZone"><div id="stick"></div></div>
+  <div class="buttons">
+    <button id="jumpBtn">JUMP</button>
+    <button id="attackBtn">SWORD</button>
+    <button id="spellBtn">FIRE<br>15 MP</button>
+    <button id="interactBtn">NEXT<br>LEVEL</button>
+  </div>
+</div>
+<div id="overlay">
+  <div class="panel">
+    <div class="eyebrow">A 3D FANTASY ADVENTURE</div>
+    <h1>Echoes of the<br>Lost Kingdom</h1>
+    <p><b>Introduction — The World Before the Darkness</b></p>
+    <p>Long ago, the Heart of Eternity protected Eldoria. When King Aldric shattered it to contain an ancient being called the Hollow One, darkness swallowed the kingdom. The king vanished, and the truth was buried.</p>
+    <p>Fifteen years later, shadow creatures attack the village where Kael has grown up. A mysterious guardian gives him a broken sword and one warning: find the fragments, uncover the truth, and never trust the king.</p>
+    <p>Now Kael must cross eight dangerous regions to decide the fate of Eldoria.</p>
+    <p class="small">Prototype controls: use the left joystick to move. Tap JUMP, SWORD, or FIRE. This starter version uses simple generated 3D shapes; later, you can replace them with custom models, animations, sound, and detailed terrain.</p>
+    <button id="startBtn">BEGIN THE ADVENTURE</button>
+  </div>
+</div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x91b9c8);
+scene.fog = new THREE.Fog(0x91b9c8, 24, 95);
+const camera = new THREE.PerspectiveCamera(65, innerWidth/innerHeight, 0.1, 250);
+const renderer = new THREE.WebGLRenderer({antialias:true, powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.6));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(0xd9efff, 0x34402c, 2.0));
+const sun = new THREE.DirectionalLight(0xffe3b2, 2.4);
+sun.position.set(-12,22,9); sun.castShadow=true; sun.shadow.mapSize.set(1024,1024);
+scene.add(sun);
+
+const mats = {
+ grass:new THREE.MeshStandardMaterial({color:0x3c7148, roughness:1}),
+ path:new THREE.MeshStandardMaterial({color:0x76664f, roughness:1}),
+ trunk:new THREE.MeshStandardMaterial({color:0x513b2b}),
+ leaves:new THREE.MeshStandardMaterial({color:0x214b3b, roughness:1}),
+ stone:new THREE.MeshStandardMaterial({color:0x707b80, roughness:1}),
+ gold:new THREE.MeshStandardMaterial({color:0xf1c96b, metalness:.35, roughness:.35}),
+ dark:new THREE.MeshStandardMaterial({color:0x251f35, roughness:.8}),
+ enemy:new THREE.MeshStandardMaterial({color:0x512d47, emissive:0x22051a}),
+ player:new THREE.MeshStandardMaterial({color:0x2b79a1, roughness:.55}),
+ skin:new THREE.MeshStandardMaterial({color:0xd8a47d}),
+ fire:new THREE.MeshBasicMaterial({color:0xff6a22}),
+ crystal:new THREE.MeshStandardMaterial({color:0x6be8ff, emissive:0x167ca4, emissiveIntensity:1.6})
+};
+const boxGeo = new THREE.BoxGeometry(1,1,1);
+const sphereGeo = new THREE.SphereGeometry(1,12,10);
+function mesh(geo, mat, x,y,z,sx=1,sy=1,sz=1) {
+ const m=new THREE.Mesh(geo,mat); m.position.set(x,y,z); m.scale.set(sx,sy,sz); m.castShadow=true; m.receiveShadow=true; scene.add(m); return m;
+}
+const ground=mesh(new THREE.PlaneGeometry(160,160),mats.grass,0,-.18,0,1,1,1); ground.rotation.x=-Math.PI/2; ground.receiveShadow=true;
+const path=mesh(new THREE.PlaneGeometry(8,110),mats.path,0,-.16,-34); path.rotation.x=-Math.PI/2; path.receiveShadow=true;
+// Terrain banks and cliffs
+for(let i=0;i<22;i++){
+ const z=18-i*4.4, side=i%2?1:-1, x=side*(8+Math.random()*5);
+ mesh(new THREE.ConeGeometry(3+Math.random()*3,5+Math.random()*7,5),mats.grass,x,1.7,z,1.3,1,1.3);
+}
+// trees and rocks create a forest corridor
+for(let i=0;i<95;i++){
+ const z=24-Math.random()*105, side=Math.random()<.5?-1:1, x=side*(7+Math.random()*23);
+ mesh(new THREE.CylinderGeometry(.22,.38,2.5,7),mats.trunk,x,1.1,z);
+ const crown=mesh(new THREE.ConeGeometry(1.7+Math.random()*1.4,4+Math.random()*2,7),mats.leaves,x,3.4,z,1,1,1);
+}
+for(let i=0;i<18;i++){
+ const z=-10-i*4.2;
+ mesh(boxGeo, mats.stone, (i%2?1:-1)*(3.7+(i%3)*.4),.4,z,1.4,.8,1.2);
+}
+// Broken village walls and simple ruined houses
+for(let i=0;i<7;i++){
+ let x=(i%2?1:-1)*(5+Math.random()*4), z=4-i*5;
+ mesh(boxGeo,mats.stone,x,1.1,z,3,2.2,2.2);
+ mesh(boxGeo,mats.dark,x,2.4,z,3.3,.25,2.5).rotation.z=(i%2?.15:-.15);
+}
+// platforming section ahead
+const platforms=[];
+for(let i=0;i<7;i++){
+ const p=mesh(boxGeo, i%2?mats.gold:mats.stone, (i%2?2:-2), .45+i*.24, -43-i*5, 3.4,.55,3.0);
+ platforms.push(p);
+}
+// gate at end of first region
+const gate=mesh(boxGeo,mats.gold,0,2.2,-83,5,.35,.45);
+mesh(boxGeo,mats.gold,-2.5,1.5,-83,.35,3.2,.5);
+mesh(boxGeo,mats.gold,2.5,1.5,-83,.35,3.2,.5);
+const portal=mesh(new THREE.TorusGeometry(1.35,.13,8,24),mats.crystal,0,2.2,-82.7); portal.rotation.y=Math.PI/2;
+
+// player: stylized placeholder adventurer
+const player=new THREE.Group(); scene.add(player);
+const body=mesh(boxGeo,mats.player,0,0,0,.75,1.05,.42); body.position.set(0,1.1,0); body.parent.remove(body); player.add(body);
+const head=mesh(sphereGeo,mats.skin,0,1.92,0,.34,.37,.34); head.parent.remove(head); player.add(head);
+const hair=mesh(sphereGeo,mats.dark,0,2.13,-.04,.37,.2,.36); hair.parent.remove(hair); player.add(hair);
+const sword=mesh(boxGeo,mats.gold,.52,1.12,-.05,.12,.95,.16); sword.parent.remove(sword); player.add(sword);
+const cape=mesh(boxGeo,mats.dark,0,1.12,.28,.62,.9,.12); cape.parent.remove(cape); player.add(cape);
+player.position.set(0,0,8);
+let health=100,mana=100,started=false,level=0, kills=0, attackCooldown=0, spellCooldown=0, jumpV=0, grounded=true;
+const chapterNames=['The Burning Village','The Forest of Whispers','The Ruins of Eldoria','The Mountain of Ashes','The Drowned City','The Kingdom of Shadows','The Fall of the Hollow One','The Last Light'];
+const chapterGoals=['Escape the village and defeat 3 shadow creatures.','Find the Guardian Rune in the whispering forest.','Reach the ruined palace and claim the first fragment.','Cross the ash platforms and survive the volcanic pass.','Explore the drowned ruins and recover the third fragment.','Enter the Shadow Realm and find the imprisoned king.','Defeat the Hollow One’s guardians.','Reach the throne and choose Eldoria’s fate.'];
+const chapterColors=[0x91b9c8,0x638d83,0x9b9b9b,0xe28b58,0x327f9c,0x3a315f,0x251e36,0xf0c98a];
+const enemies=[];
+function makeEnemy(x,z,boss=false){
+ const g=new THREE.Group(); scene.add(g);
+ const ebody=new THREE.Mesh(boss?new THREE.DodecahedronGeometry(.9):new THREE.BoxGeometry(.8,1.25,.65),boss?mats.enemy:mats.dark);
+ ebody.position.y=boss?1.15:.8; ebody.castShadow=true; g.add(ebody);
+ const eyeMat=new THREE.MeshBasicMaterial({color:0xff304c});
+ for(const dx of [-.2,.2]){const eye=new THREE.Mesh(new THREE.SphereGeometry(.07,8,8),eyeMat); eye.position.set(dx,ebody.position.y+.12,-.34);g.add(eye);}
+ g.position.set(x,0,z); enemies.push({g,hp:boss?8:2,boss,alive:true,hit:0,baseX:x,baseZ:z}); return g;
+}
+for(let i=0;i<7;i++) makeEnemy((i%2?1:-1)*(2.4+Math.random()*2),-8-i*8);
+makeEnemy(0,-72,true);
+const projectiles=[];
+function fireball(){
+ if(mana<15||spellCooldown>0)return;
+ mana-=15; spellCooldown=.6; updateBars();
+ const p=mesh(sphereGeo,mats.fire,player.position.x,1.25,player.position.z-1,.25,.25,.25);
+ projectiles.push({m:p,v:new THREE.Vector3(0,0,-1),life:1.8});
+ showMessage('Firebolt cast!');
+}
+function slash(){
+ if(attackCooldown>0)return; attackCooldown=.45;
+ sword.rotation.z=-1.1; setTimeout(()=>sword.rotation.z=0,180);
+ let hit=false;
+ for(const e of enemies){if(!e.alive)continue; const d=e.g.position.distanceTo(player.position); if(d<3.3){e.hp-=1;e.hit=.18;hit=true;if(e.hp<=0){e.alive=false;scene.remove(e.g);kills++;mana=Math.min(100,mana+5);}}}
+ if(hit)showMessage('A shadow recoils from your blade.');
+ updateBars();
+}
+function updateBars(){
+ document.getElementById('healthFill').style.width=health+'%';
+ document.getElementById('manaFill').style.width=mana+'%';
+ document.getElementById('chapter').textContent='CHAPTER '+(level+1)+' — '+chapterNames[level].toUpperCase();
+ document.getElementById('objective').textContent='Objective: '+chapterGoals[level]+'  ('+kills+' foes defeated)';
+}
+let msgTimer;
+function showMessage(t){const el=document.getElementById('message');el.textContent=t;el.style.opacity=1;clearTimeout(msgTimer);msgTimer=setTimeout(()=>el.style.opacity=0,2200);}
+const stickZone=document.getElementById('stickZone'), stick=document.getElementById('stick');
+let stickPointer=null, joy={x:0,y:0};
+function setStick(e){
+ const r=stickZone.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+r.height/2;
+ let dx=e.clientX-cx,dy=e.clientY-cy, len=Math.hypot(dx,dy), max=42;
+ if(len>max){dx=dx/len*max;dy=dy/len*max;}
+ joy.x=dx/max;joy.y=dy/max;stick.style.left=(37+dx)+'px';stick.style.top=(37+dy)+'px';
+}
+stickZone.addEventListener('pointerdown',e=>{stickPointer=e.pointerId;stickZone.setPointerCapture(e.pointerId);setStick(e);});
+stickZone.addEventListener('pointermove',e=>{if(e.pointerId===stickPointer)setStick(e);});
+function resetStick(){stickPointer=null;joy={x:0,y:0};stick.style.left='37px';stick.style.top='37px';}
+stickZone.addEventListener('pointerup',resetStick);stickZone.addEventListener('pointercancel',resetStick);
+document.getElementById('jumpBtn').addEventListener('pointerdown',e=>{e.preventDefault();if(grounded){jumpV=7.5;grounded=false;}});
+document.getElementById('attackBtn').addEventListener('pointerdown',e=>{e.preventDefault();slash();});
+document.getElementById('spellBtn').addEventListener('pointerdown',e=>{e.preventDefault();fireball();});
+document.getElementById('interactBtn').addEventListener('pointerdown',e=>{e.preventDefault();nextLevel();});
+const keys={};
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.code==='Space'&&grounded){jumpV=7.5;grounded=false;}if(e.key.toLowerCase()==='j')slash();if(e.key.toLowerCase()==='k')fireball();});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+function nextLevel(){
+ if(!started)return;
+ if(level<7){
+  level++;
+  // Each chapter expands the playable route and increases enemy pressure.
+  const length=110+level*28;
+  scene.fog.far=95+level*12;
+  scene.background.setHex(chapterColors[level]); scene.fog.color.setHex(chapterColors[level]);
+  for(let i=0;i<10+level*3;i++){
+   const z=-92-i*(length/(10+level*3)), side=Math.random()<.5?-1:1;
+   const x=side*(5+Math.random()*15);
+   if(level===3){mesh(new THREE.ConeGeometry(2+Math.random()*2,5+Math.random()*5,6),new THREE.MeshStandardMaterial({color:0x70423b,emissive:0x321008}),x,2,z);}
+   else if(level===4){mesh(new THREE.CylinderGeometry(1,1.4,2.3,8),new THREE.MeshStandardMaterial({color:0x276e83}),x,1,z);}
+   else {mesh(new THREE.ConeGeometry(2.5,5,6),level===5?mats.dark:mats.leaves,x,2.2,z);}
+   if(i%2===0)makeEnemy(x*.45,z-5,level===6&&i===8);
+  }
+  // Add a long winding route with stepping platforms at later chapters.
+  for(let i=0;i<8+level*2;i++){
+   const z=-100-i*5.5, x=Math.sin(i*.8+level)*4;
+   const p=mesh(boxGeo,level>=3?mats.gold:mats.stone,x,.4+(i%3)*.35,z,3.5,.5,3);
+   platforms.push(p);
+  }
+  player.position.set(0,0,8); health=Math.min(100,health+18);mana=100;
+  showMessage('Chapter '+(level+1)+': '+chapterNames[level]);
+  updateBars();
+ } else {
+  document.getElementById('overlay').style.display='flex';
+  document.querySelector('#overlay .eyebrow').textContent='THE JOURNEY IS YOURS';
+  document.querySelector('#overlay h1').innerHTML='The Last Light';
+  document.querySelector('#overlay .panel p').innerHTML='<b>Ending unlocked — The Road Ahead</b>';
+  document.querySelectorAll('#overlay .panel p')[1].textContent='Kael reaches the throne of Eternity. The fragments shine, and Eldoria waits for his choice. This prototype ends here; the full story can add the three branching endings.';
+  document.querySelectorAll('#overlay .panel p')[2].textContent='You completed the eight-chapter prototype. Tap restart to play again.';
+  document.getElementById('startBtn').textContent='PLAY AGAIN';
+  document.getElementById('startBtn').onclick=()=>location.reload();
+ }
+}
+document.getElementById('startBtn').addEventListener('click',()=>{
+ document.getElementById('overlay').style.display='none';started=true;
+ showMessage('Escape the burning village. Defeat the shadow creatures!');
+ updateBars();
+});
+
+const clock=new THREE.Clock();
+function animate(){
+ requestAnimationFrame(animate);
+ const dt=Math.min(clock.getDelta(),.035);
+ if(started){
+  attackCooldown=Math.max(0,attackCooldown-dt);spellCooldown=Math.max(0,spellCooldown-dt);
+  mana=Math.min(100,mana+dt*2.2);
+  const forward=-(joy.y||0), side=joy.x||0;
+  let f=forward+(keys.w?1:0)-(keys.s?1:0), s=side+(keys.d?1:0)-(keys.a?1:0);
+  const len=Math.hypot(f,s)||1;f/=len;s/=len;
+  player.position.x+=s*dt*6;
+  player.position.z-=f*dt*6;
+  player.position.x=THREE.MathUtils.clamp(player.position.x,-5.8,5.8);
+  jumpV-=18*dt;player.position.y+=jumpV*dt;
+  if(player.position.y<=0){player.position.y=0;jumpV=0;grounded=true;}
+  player.rotation.y=Math.atan2(s,-f||.001);
+  // Basic enemy pursuit and contact damage
+  for(const e of enemies){if(!e.alive)continue;
+   const dx=player.position.x-e.g.position.x,dz=player.position.z-e.g.position.z,d=Math.hypot(dx,dz);
+   if(d<18&&d>1.35){e.g.position.x+=dx/d*dt*(e.boss?1.5:1.15);e.g.position.z+=dz/d*dt*(e.boss?1.5:1.15);}
+   if(d<1.4){health=Math.max(0,health-dt*(e.boss?16:7));}
+   e.g.position.y=Math.sin(performance.now()*.003+e.baseZ)*.08;
+  }
+  for(let i=projectiles.length-1;i>=0;i--){
+   const p=projectiles[i];p.m.position.z-=dt*19;p.life-=dt;
+   let consumed=false;
+   for(const e of enemies){if(!e.alive)continue;if(p.m.position.distanceTo(e.g.position.clone().add(new THREE.Vector3(0,1,0)))<1.4){e.hp-=3;consumed=true;if(e.hp<=0){e.alive=false;scene.remove(e.g);kills++;}break;}}
+   if(consumed||p.life<=0){scene.remove(p.m);projectiles.splice(i,1);}
+  }
+  if(health<=0){health=100;player.position.set(0,0,8);showMessage('You were defeated. You returned to the last camp.');}
+  updateBars();
+ }
+ const target=new THREE.Vector3(player.position.x,player.position.y+1.1,player.position.z);
+ const desired=new THREE.Vector3(player.position.x,player.position.y+4.4,player.position.z+8.8);
+ camera.position.lerp(desired,.09);camera.lookAt(target);
+ portal.rotation.z+=.01;
+ renderer.render(scene,camera);
+}
+animate();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));});
+</script>
+</body>
+</html>
